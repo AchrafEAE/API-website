@@ -2,12 +2,18 @@
 
 // Fetch football data from an open API and display it
 async function fetchFootballData() {
-    // Fetch a lot of teams from the English Premier League
-    const leagueUrl = 'https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=English%20Premier%20League';
+    // Fetch both teams and league table concurrently
+    const leagueTeamsUrl = 'https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=English%20Premier%20League';
+    const leagueTableUrl = 'https://www.thesportsdb.com/api/v1/json/3/lookuptable.php?l=4328&s=2023-2024'; // Example: league table
     try {
-        const response = await fetch(leagueUrl);
-        const data = await response.json();
-        const teams = data.teams || [];
+        const [teamsRes, tableRes] = await Promise.all([
+            fetch(leagueTeamsUrl),
+            fetch(leagueTableUrl)
+        ]);
+        const teamsData = await teamsRes.json();
+        const tableData = await tableRes.json();
+        const teams = teamsData.teams || [];
+        // Optionally, you can use tableData for more info
         renderFootballData(teams);
         renderAdditionalInfo(teams);
     } catch (error) {
@@ -23,9 +29,9 @@ function renderFootballData(teams) {
     }
     // Add a modal container for popups
     container.innerHTML = `
-        <div class="w-full">
+        <section class="w-full">
             <h3 class="text-lg font-bold mb-4">Football API Data</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <section class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 ${teams.map((team, idx) => {
                     let badgeUrl = team.strTeamBadge || team.strBadge || team.strTeamLogo || team.strLogo;
                     if (badgeUrl && badgeUrl.startsWith('http://')) {
@@ -35,21 +41,21 @@ function renderFootballData(teams) {
                         badgeUrl = 'https://www.thesportsdb.com/images/media/team/badge/uwrpvw1448813372.png';
                     }
                     return `
-                    <div class="border rounded p-4 flex flex-col items-center bg-white shadow hover:shadow-lg transition cursor-pointer h-full" onclick="showTeamPopup(${idx})">
+                    <section class="border rounded p-4 flex flex-col items-center bg-white shadow hover:shadow-lg transition cursor-pointer h-full" onclick="showTeamPopup(${idx})" aria-label="Team card">
                         <img src="${badgeUrl}" alt="${team.strTeam} badge" class="w-20 h-20 object-contain mb-2" />
-                        <div class="font-bold text-center text-lg mb-1">${team.strTeam}</div>
-                        <div class="text-sm text-gray-600 text-center mb-1">${team.strCountry} &bull; Founded: ${team.intFormedYear || 'N/A'}</div>
-                    </div>
+                        <header class="font-bold text-center text-lg mb-1">${team.strTeam}</header>
+                        <p class="text-sm text-gray-600 text-center mb-1">${team.strCountry} &bull; Founded: ${team.intFormedYear || 'N/A'}</p>
+                    </section>
                     `;
                 }).join('')}
-            </div>
-            <div id="team-popup-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-                <div id="team-popup-content" class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
+            </section>
+            <section id="team-popup-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <section id="team-popup-content" class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full relative">
                     <button onclick="closeTeamPopup()" class="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl">&times;</button>
-                    <div id="team-popup-body"></div>
-                </div>
-            </div>
-        </div>
+                    <section id="team-popup-body"></section>
+                </section>
+            </section>
+        </section>
     `;
     // Store teams globally for popup access
     window._footballTeams = teams;
@@ -88,14 +94,14 @@ window.showTeamPopup = function(idx) {
         badgeUrl = 'https://www.thesportsdb.com/images/media/team/badge/uwrpvw1448813372.png';
     }
     document.getElementById('team-popup-body').innerHTML = `
-        <div class="flex flex-col items-center">
+        <section class="flex flex-col items-center">
             <img src="${badgeUrl}" alt="${team.strTeam} badge" class="w-24 h-24 object-contain mb-2" />
-            <div class="font-bold text-center text-xl mb-1">${team.strTeam}</div>
-            <div class="text-sm text-gray-600 text-center mb-1">${team.strCountry} &bull; Founded: ${team.intFormedYear || 'N/A'}</div>
-            <div class="text-sm text-gray-700 mb-1"><b>Stadium:</b> ${team.strStadium || 'N/A'}</div>
-            <div class="text-xs text-gray-500 mb-1">${team.strDescriptionEN ? team.strDescriptionEN.substring(0, 300) + '...' : ''}</div>
-            <div class="text-xs"><a href="${team.strWebsite ? (team.strWebsite.startsWith('http') ? team.strWebsite : 'https://' + team.strWebsite) : '#'}" target="_blank" class="text-blue-600 hover:underline">${team.strWebsite ? 'Website' : ''}</a></div>
-        </div>
+            <header class="font-bold text-center text-xl mb-1">${team.strTeam}</header>
+            <p class="text-sm text-gray-600 text-center mb-1">${team.strCountry} &bull; Founded: ${team.intFormedYear || 'N/A'}</p>
+            <p class="text-sm text-gray-700 mb-1"><b>Stadium:</b> ${team.strStadium || 'N/A'}</p>
+            <p class="text-xs text-gray-500 mb-1">${team.strDescriptionEN ? team.strDescriptionEN.substring(0, 300) + '...' : ''}</p>
+            <nav class="text-xs"><a href="${team.strWebsite ? (team.strWebsite.startsWith('http') ? team.strWebsite : 'https://' + team.strWebsite) : '#'}" target="_blank" class="text-blue-600 hover:underline">${team.strWebsite ? 'Website' : ''}</a></nav>
+        </section>
     `;
     document.getElementById('team-popup-modal').classList.remove('hidden');
 }
